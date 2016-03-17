@@ -16,6 +16,12 @@
 
 package roman.vertx.web.method;
 
+import io.vertx.core.http.HttpMethod;
+import io.vertx.ext.web.Route;
+import io.vertx.ext.web.Router;
+
+import java.lang.reflect.Method;
+
 import org.springframework.util.StringUtils;
 
 import roman.vertx.web.condition.ConsumesRequestCondition;
@@ -25,6 +31,7 @@ import roman.vertx.web.condition.PatternsRequestCondition;
 import roman.vertx.web.condition.ProducesRequestCondition;
 import roman.vertx.web.condition.RequestCondition;
 import roman.vertx.web.condition.RequestMethodsRequestCondition;
+import roman.vertx.web.handler.Handler;
 
 /**
  * Encapsulates the following request mapping conditions:
@@ -35,14 +42,19 @@ import roman.vertx.web.condition.RequestMethodsRequestCondition;
  * <li>{@link HeadersRequestCondition}
  * <li>{@link ConsumesRequestCondition}
  * <li>{@link ProducesRequestCondition}
- * <li>{@code RequestCondition} (optional, custom request condition)
  * </ol>
  *
- * @author Arjen Poutsma
- * @author Rossen Stoyanchev
- * @since 3.1
+ * @author RomanLuo
+ * @email 530827804@qq.com
+ * @date 2016年3月17日 下午1:57:37
  */
-public final class RequestMappingInfo implements RequestCondition<RequestMappingInfo> {
+public final class RequestMappingInfo implements RequestCondition<RequestMappingInfo>, Handler {
+
+	private final Object object;
+
+	private final Method method;
+
+	private Router router;
 
 	private final String name;
 
@@ -58,9 +70,11 @@ public final class RequestMappingInfo implements RequestCondition<RequestMapping
 
 	private final ProducesRequestCondition producesCondition;
 
-	public RequestMappingInfo(String name, PatternsRequestCondition patterns, RequestMethodsRequestCondition methods, ParamsRequestCondition params, HeadersRequestCondition headers,
-			ConsumesRequestCondition consumes, ProducesRequestCondition produces) {
-
+	public RequestMappingInfo(Object object, Method method, Router router, String name, PatternsRequestCondition patterns, RequestMethodsRequestCondition methods, ParamsRequestCondition params,
+			HeadersRequestCondition headers, ConsumesRequestCondition consumes, ProducesRequestCondition produces) {
+		this.object = object;
+		this.method = method;
+		this.router = router;
 		this.name = (StringUtils.hasText(name) ? name : null);
 		this.patternsCondition = (patterns != null ? patterns : new PatternsRequestCondition());
 		this.methodsCondition = (methods != null ? methods : new RequestMethodsRequestCondition());
@@ -68,22 +82,6 @@ public final class RequestMappingInfo implements RequestCondition<RequestMapping
 		this.headersCondition = (headers != null ? headers : new HeadersRequestCondition());
 		this.consumesCondition = (consumes != null ? consumes : new ConsumesRequestCondition());
 		this.producesCondition = (produces != null ? produces : new ProducesRequestCondition());
-	}
-
-	/**
-	 * Creates a new instance with the given request conditions.
-	 */
-	public RequestMappingInfo(PatternsRequestCondition patterns, RequestMethodsRequestCondition methods, ParamsRequestCondition params, HeadersRequestCondition headers,
-			ConsumesRequestCondition consumes, ProducesRequestCondition produces) {
-
-		this(null, patterns, methods, params, headers, consumes, produces);
-	}
-
-	/**
-	 * Re-create a RequestMappingInfo with the given custom request condition.
-	 */
-	public RequestMappingInfo(RequestMappingInfo info, RequestCondition<?> customRequestCondition) {
-		this(info.name, info.patternsCondition, info.methodsCondition, info.paramsCondition, info.headersCondition, info.consumesCondition, info.producesCondition);
 	}
 
 	/**
@@ -159,12 +157,12 @@ public final class RequestMappingInfo implements RequestCondition<RequestMapping
 		ConsumesRequestCondition consumes = this.consumesCondition.combine(other.consumesCondition);
 		ProducesRequestCondition produces = this.producesCondition.combine(other.producesCondition);
 
-		return new RequestMappingInfo(name, patterns, methods, params, headers, consumes, produces);
+		return new RequestMappingInfo(object, method, router, name, patterns, methods, params, headers, consumes, produces);
 	}
 
 	private String combineNames(RequestMappingInfo other) {
 		if (this.name != null && other.name != null) {
-			String separator = RequestMappingInfoHandlerMethodMappingNamingStrategy.SEPARATOR;
+			String separator = "#";
 			return this.name + separator + other.name;
 		} else if (this.name != null) {
 			return this.name;
@@ -188,8 +186,7 @@ public final class RequestMappingInfo implements RequestCondition<RequestMapping
 
 	@Override
 	public int hashCode() {
-		return (this.patternsCondition.hashCode() * 31 + // primary
-															// differentiation
+		return (this.object.hashCode() + method.hashCode() + this.patternsCondition.hashCode() * 31 + // primary
 				this.methodsCondition.hashCode() + this.paramsCondition.hashCode() + this.headersCondition.hashCode() + this.consumesCondition.hashCode() + this.producesCondition.hashCode());
 	}
 
@@ -204,6 +201,21 @@ public final class RequestMappingInfo implements RequestCondition<RequestMapping
 		builder.append(",produces=").append(this.producesCondition);
 		builder.append('}');
 		return builder.toString();
+	}
+
+	@Override
+	public void handle() {
+		for (Route route : patternsCondition.router(router)) {
+			for (HttpMethod httpMethod : methodsCondition.getMethods()) {
+				route.method(httpMethod).handler(r -> {
+					try {
+						method.invoke(object, r.request(), r.response());
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				});
+			}
+		}
 	}
 
 }

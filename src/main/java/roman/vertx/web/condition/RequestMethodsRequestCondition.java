@@ -1,20 +1,6 @@
-/*
- * Copyright 2002-2014 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package roman.vertx.web.condition;
+
+import io.vertx.core.http.HttpMethod;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -23,19 +9,17 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import roman.vertx.web.bind.annotation.RequestMethod;
-
 /**
  * A logical disjunction (' || ') request condition that matches a request
- * against a set of {@link RequestMethod}s.
+ * against a set of {@link HttpMethod}s.
  *
- * @author Arjen Poutsma
- * @author Rossen Stoyanchev
- * @since 3.1
+ * @author RomanLuo
+ * @email 530827804@qq.com
+ * @date 2016年3月17日 下午2:01:44
  */
 public final class RequestMethodsRequestCondition extends AbstractRequestCondition<RequestMethodsRequestCondition> {
 
-	private final Set<RequestMethod> methods;
+	private final Set<HttpMethod> methods;
 
 	/**
 	 * Create a new instance with the given request methods.
@@ -44,27 +28,27 @@ public final class RequestMethodsRequestCondition extends AbstractRequestConditi
 	 *            0 or more HTTP request methods; if, 0 the condition will match
 	 *            to every request
 	 */
-	public RequestMethodsRequestCondition(RequestMethod... requestMethods) {
+	public RequestMethodsRequestCondition(HttpMethod... requestMethods) {
 		this(asList(requestMethods));
 	}
 
-	private RequestMethodsRequestCondition(Collection<RequestMethod> requestMethods) {
-		this.methods = Collections.unmodifiableSet(new LinkedHashSet<RequestMethod>(requestMethods));
+	private RequestMethodsRequestCondition(Collection<HttpMethod> requestMethods) {
+		this.methods = Collections.unmodifiableSet(new LinkedHashSet<HttpMethod>(requestMethods));
 	}
 
-	private static List<RequestMethod> asList(RequestMethod... requestMethods) {
-		return (requestMethods != null ? Arrays.asList(requestMethods) : Collections.<RequestMethod> emptyList());
+	private static List<HttpMethod> asList(HttpMethod... requestMethods) {
+		return (requestMethods != null ? Arrays.asList(requestMethods) : Collections.<HttpMethod> emptyList());
 	}
 
 	/**
 	 * Returns all {@link RequestMethod}s contained in this condition.
 	 */
-	public Set<RequestMethod> getMethods() {
+	public Set<HttpMethod> getMethods() {
 		return this.methods;
 	}
 
 	@Override
-	protected Collection<RequestMethod> getContent() {
+	protected Collection<HttpMethod> getContent() {
 		return this.methods;
 	}
 
@@ -79,7 +63,7 @@ public final class RequestMethodsRequestCondition extends AbstractRequestConditi
 	 */
 	@Override
 	public RequestMethodsRequestCondition combine(RequestMethodsRequestCondition other) {
-		Set<RequestMethod> set = new LinkedHashSet<RequestMethod>(this.methods);
+		Set<HttpMethod> set = new LinkedHashSet<HttpMethod>(this.methods);
 		set.addAll(other.methods);
 		return new RequestMethodsRequestCondition(set);
 	}

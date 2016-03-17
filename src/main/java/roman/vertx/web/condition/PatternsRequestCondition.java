@@ -1,20 +1,7 @@
-/*
- * Copyright 2002-2014 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package roman.vertx.web.condition;
+
+import io.vertx.ext.web.Route;
+import io.vertx.ext.web.Router;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,20 +19,15 @@ import org.springframework.util.StringUtils;
  * A logical disjunction (' || ') request condition that matches a request
  * against a set of URL path patterns.
  *
- * @author Rossen Stoyanchev
- * @since 3.1
+ * @author RomanLuo
+ * @email 530827804@qq.com
+ * @date 2016年3月17日 下午2:02:39
  */
 public final class PatternsRequestCondition extends AbstractRequestCondition<PatternsRequestCondition> {
 
 	private final Set<String> patterns;
 
 	private final PathMatcher pathMatcher;
-
-	private final boolean useSuffixPatternMatch;
-
-	private final boolean useTrailingSlashMatch;
-
-	private final List<String> fileExtensions = new ArrayList<String>();
 
 	/**
 	 * Creates a new instance with the given URL patterns. Each pattern that is
@@ -56,70 +38,20 @@ public final class PatternsRequestCondition extends AbstractRequestCondition<Pat
 	 *            request.
 	 */
 	public PatternsRequestCondition(String... patterns) {
-		this(asList(patterns), null, true, true, null);
+		this(asList(patterns), null);
 	}
 
-	/**
-	 * Additional constructor with flags for using suffix pattern (.*) and
-	 * trailing slash matches.
-	 * 
-	 * @param patterns
-	 *            the URL patterns to use; if 0, the condition will match to
-	 *            every request.
-	 * @param urlPathHelper
-	 *            for determining the lookup path of a request
-	 * @param pathMatcher
-	 *            for path matching with patterns
-	 * @param useSuffixPatternMatch
-	 *            whether to enable matching by suffix (".*")
-	 * @param useTrailingSlashMatch
-	 *            whether to match irrespective of a trailing slash
-	 */
-	public PatternsRequestCondition(String[] patterns, PathMatcher pathMatcher, boolean useSuffixPatternMatch, boolean useTrailingSlashMatch) {
-		this(asList(patterns), pathMatcher, useSuffixPatternMatch, useTrailingSlashMatch, null);
-	}
-
-	/**
-	 * Creates a new instance with the given URL patterns. Each pattern that is
-	 * not empty and does not start with "/" is pre-pended with "/".
-	 * 
-	 * @param patterns
-	 *            the URL patterns to use; if 0, the condition will match to
-	 *            every request.
-	 * @param urlPathHelper
-	 *            a {@link UrlPathHelper} for determining the lookup path for a
-	 *            request
-	 * @param pathMatcher
-	 *            a {@link PathMatcher} for pattern path matching
-	 * @param useSuffixPatternMatch
-	 *            whether to enable matching by suffix (".*")
-	 * @param useTrailingSlashMatch
-	 *            whether to match irrespective of a trailing slash
-	 * @param fileExtensions
-	 *            a list of file extensions to consider for path matching
-	 */
-	public PatternsRequestCondition(String[] patterns, PathMatcher pathMatcher, boolean useSuffixPatternMatch, boolean useTrailingSlashMatch, List<String> fileExtensions) {
-
-		this(asList(patterns), pathMatcher, useSuffixPatternMatch, useTrailingSlashMatch, fileExtensions);
+	public PatternsRequestCondition(String[] patterns, PathMatcher pathMatcher) {
+		this(asList(patterns), pathMatcher);
 	}
 
 	/**
 	 * Private constructor accepting a collection of patterns.
 	 */
-	private PatternsRequestCondition(Collection<String> patterns, PathMatcher pathMatcher, boolean useSuffixPatternMatch, boolean useTrailingSlashMatch, List<String> fileExtensions) {
+	private PatternsRequestCondition(Collection<String> patterns, PathMatcher pathMatcher) {
 
 		this.patterns = Collections.unmodifiableSet(prependLeadingSlash(patterns));
 		this.pathMatcher = pathMatcher != null ? pathMatcher : new AntPathMatcher();
-		this.useSuffixPatternMatch = useSuffixPatternMatch;
-		this.useTrailingSlashMatch = useTrailingSlashMatch;
-		if (fileExtensions != null) {
-			for (String fileExtension : fileExtensions) {
-				if (fileExtension.charAt(0) != '.') {
-					fileExtension = "." + fileExtension;
-				}
-				this.fileExtensions.add(fileExtension);
-			}
-		}
 	}
 
 	private static List<String> asList(String... patterns) {
@@ -181,7 +113,19 @@ public final class PatternsRequestCondition extends AbstractRequestCondition<Pat
 		} else {
 			result.add("");
 		}
-		return new PatternsRequestCondition(result, this.pathMatcher, this.useSuffixPatternMatch, this.useTrailingSlashMatch, this.fileExtensions);
+		return new PatternsRequestCondition(result, this.pathMatcher);
+	}
+
+	public List<Route> router(Router router) {
+		List<Route> routes = new ArrayList<Route>();
+		for (String pattern : patterns) {
+			if (pathMatcher.isPattern(pattern)) {
+				routes.add(router.routeWithRegex(pattern));
+			} else {
+				routes.add(router.route(pattern));
+			}
+		}
+		return routes;
 	}
 
 }
