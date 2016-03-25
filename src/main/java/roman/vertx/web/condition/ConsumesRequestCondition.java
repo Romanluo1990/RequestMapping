@@ -1,5 +1,7 @@
 package roman.vertx.web.condition;
 
+import io.vertx.ext.web.Route;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -8,7 +10,6 @@ import java.util.List;
 import java.util.Set;
 
 import roman.vertx.web.bind.annotation.RequestMapping;
-import roman.vertx.web.condition.HeadersRequestCondition.HeaderExpression;
 import roman.vertx.web.http.MediaType;
 
 /**
@@ -25,7 +26,7 @@ import roman.vertx.web.http.MediaType;
  */
 public final class ConsumesRequestCondition extends AbstractRequestCondition<ConsumesRequestCondition> {
 
-	private final List<ConsumeMediaTypeExpression> expressions;
+	private final List<MediaType> mediaTypes;
 
 	/**
 	 * Creates a new instance from 0 or more "consumes" expressions.
@@ -36,82 +37,30 @@ public final class ConsumesRequestCondition extends AbstractRequestCondition<Con
 	 *            provided, the condition will match to every request
 	 */
 	public ConsumesRequestCondition(String... consumes) {
-		this(consumes, null);
-	}
-
-	/**
-	 * Creates a new instance with "consumes" and "header" expressions. "Header"
-	 * expressions where the header name is not 'Content-Type' or have no header
-	 * value defined are ignored. If 0 expressions are provided in total, the
-	 * condition will match to every request
-	 * 
-	 * @param consumes
-	 *            as described in {@link RequestMapping#consumes()}
-	 * @param headers
-	 *            as described in {@link RequestMapping#headers()}
-	 */
-	public ConsumesRequestCondition(String[] consumes, String[] headers) {
-		this(parseExpressions(consumes, headers));
+		this(parseExpressions(consumes));
 	}
 
 	/**
 	 * Private constructor accepting parsed media type expressions.
 	 */
-	private ConsumesRequestCondition(Collection<ConsumeMediaTypeExpression> expressions) {
-		this.expressions = new ArrayList<ConsumeMediaTypeExpression>(expressions);
-		Collections.sort(this.expressions);
+	private ConsumesRequestCondition(Collection<MediaType> mediaTypes) {
+		this.mediaTypes = new ArrayList<MediaType>(mediaTypes);
+		Collections.sort(this.mediaTypes);
 	}
 
-	private static Set<ConsumeMediaTypeExpression> parseExpressions(String[] consumes, String[] headers) {
-		Set<ConsumeMediaTypeExpression> result = new LinkedHashSet<ConsumeMediaTypeExpression>();
-		if (headers != null) {
-			for (String header : headers) {
-				HeaderExpression expr = new HeaderExpression(header);
-				if ("Content-Type".equalsIgnoreCase(expr.name)) {
-					for (MediaType mediaType : MediaType.parseMediaTypes(expr.value)) {
-						result.add(new ConsumeMediaTypeExpression(mediaType, expr.isNegated));
-					}
-				}
-			}
-		}
+	private static Set<MediaType> parseExpressions(String[] consumes) {
+		Set<MediaType> result = new LinkedHashSet<MediaType>();
 		if (consumes != null) {
 			for (String consume : consumes) {
-				result.add(new ConsumeMediaTypeExpression(consume));
+				result.add(MediaType.parseMediaType(consume));
 			}
 		}
 		return result;
-	}
-
-	/**
-	 * Return the contained MediaType expressions.
-	 */
-	public Set<MediaTypeExpression> getExpressions() {
-		return new LinkedHashSet<MediaTypeExpression>(this.expressions);
-	}
-
-	/**
-	 * Returns the media types for this condition excluding negated expressions.
-	 */
-	public Set<MediaType> getConsumableMediaTypes() {
-		Set<MediaType> result = new LinkedHashSet<MediaType>();
-		for (ConsumeMediaTypeExpression expression : this.expressions) {
-			if (!expression.isNegated()) {
-				result.add(expression.getMediaType());
-			}
-		}
-		return result;
-	}
-
-	/**
-	 * Whether the condition has any media type expressions.
-	 */
-	public boolean isEmpty() {
-		return this.expressions.isEmpty();
 	}
 
 	@Override
-	protected Collection<ConsumeMediaTypeExpression> getContent() {
-		return this.expressions;
+	protected Collection<MediaType> getContent() {
+		return this.mediaTypes;
 	}
 
 	@Override
@@ -126,23 +75,14 @@ public final class ConsumesRequestCondition extends AbstractRequestCondition<Con
 	 */
 	@Override
 	public ConsumesRequestCondition combine(ConsumesRequestCondition other) {
-		return !other.expressions.isEmpty() ? other : this;
+		return !other.mediaTypes.isEmpty() ? other : this;
 	}
 
-	/**
-	 * Parses and matches a single media type expression to a request's
-	 * 'Content-Type' header.
-	 */
-	static class ConsumeMediaTypeExpression extends AbstractMediaTypeExpression {
-
-		ConsumeMediaTypeExpression(String expression) {
-			super(expression);
+	@Override
+	public Route Router(Route route) {
+		for (MediaType contentType : mediaTypes) {
+			route.consumes(contentType.toString());
 		}
-
-		ConsumeMediaTypeExpression(MediaType mediaType, boolean negated) {
-			super(mediaType, negated);
-		}
-
+		return route;
 	}
-
 }

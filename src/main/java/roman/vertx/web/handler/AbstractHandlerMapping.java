@@ -1,5 +1,7 @@
 package roman.vertx.web.handler;
 
+import io.vertx.ext.web.Router;
+
 import java.lang.reflect.Method;
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -16,13 +18,14 @@ import org.springframework.util.PathMatcher;
 import org.springframework.util.ReflectionUtils.MethodFilter;
 
 import roman.vertx.web.method.HandlerMethodSelector;
+import roman.vertx.web.method.RequestMappingInfo;
 
 /**
  * @author RomanLuo
  * @email 530827804@qq.com
  * @date 2016年3月17日 下午2:01:28
  */
-public abstract class AbstractHandlerMapping<T extends Handler> extends ApplicationObjectSupport implements Ordered, InitializingBean {
+public abstract class AbstractHandlerMapping extends ApplicationObjectSupport implements Ordered, InitializingBean {
 
 	private int order = Integer.MAX_VALUE; // default: same as non-Ordered
 
@@ -114,13 +117,13 @@ public abstract class AbstractHandlerMapping<T extends Handler> extends Applicat
 
 		// Avoid repeated calls to getMappingForMethod which would rebuild
 		// RequestMappingInfo instances
-		final Map<Method, Handler> mappings = new IdentityHashMap<Method, Handler>();
+		final Map<Method, RequestMappingInfo> mappings = new IdentityHashMap<Method, RequestMappingInfo>();
 		final Class<?> userType = ClassUtils.getUserClass(handlerType);
 
 		Set<Method> methods = HandlerMethodSelector.selectMethods(userType, new MethodFilter() {
 			@Override
 			public boolean matches(Method method) {
-				Handler mapping = getMappingForMethod(method, userType);
+				RequestMappingInfo mapping = getMappingForMethod(method, userType);
 				if (mapping != null) {
 					mappings.put(method, mapping);
 					return true;
@@ -146,10 +149,10 @@ public abstract class AbstractHandlerMapping<T extends Handler> extends Applicat
 	 *            declaring class
 	 * @return the mapping, or {@code null} if the method is not mapped
 	 */
-	protected abstract Handler getMappingForMethod(Method method, Class<?> handlerType);
+	protected abstract RequestMappingInfo getMappingForMethod(Method method, Class<?> handlerType);
 
-	protected void registerHandlerMethod(Handler handler) {
-		handler.handle();
+	protected void registerHandlerMethod(RequestMappingInfo handler) {
+		handler.Router(getApplicationContext().getBean(Router.class).route());
 	};
 
 	/**

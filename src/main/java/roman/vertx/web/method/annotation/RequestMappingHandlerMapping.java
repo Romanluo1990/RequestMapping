@@ -9,9 +9,7 @@ import org.springframework.stereotype.Controller;
 
 import roman.vertx.web.bind.annotation.RequestMapping;
 import roman.vertx.web.condition.ConsumesRequestCondition;
-import roman.vertx.web.condition.HeadersRequestCondition;
-import roman.vertx.web.condition.ParamsRequestCondition;
-import roman.vertx.web.condition.PatternsRequestCondition;
+import roman.vertx.web.condition.PatternRequestCondition;
 import roman.vertx.web.condition.ProducesRequestCondition;
 import roman.vertx.web.condition.RequestMethodsRequestCondition;
 import roman.vertx.web.handler.AbstractHandlerMapping;
@@ -26,7 +24,7 @@ import roman.vertx.web.method.RequestMappingInfo;
  * @email  530827804@qq.com  
  * @date   2016年3月17日 下午1:59:57 
  */
-public class RequestMappingHandlerMapping extends AbstractHandlerMapping<RequestMappingInfo> {
+public class RequestMappingHandlerMapping extends AbstractHandlerMapping {
 
 	/**
 	 * {@inheritDoc} Expects a handler to have a type-level @{@link Controller}
@@ -65,14 +63,13 @@ public class RequestMappingHandlerMapping extends AbstractHandlerMapping<Request
 	 * Created a RequestMappingInfo from a RequestMapping annotation.
 	 */
 	protected RequestMappingInfo createRequestMappingInfo(Object object, Method method, RequestMapping annotation) {
-		String[] patterns = annotation.value();
+		String pattern = annotation.value();
 		Router router = getApplicationContext().getBean(Router.class);
 		if (router == null) {
 			throw new IllegalStateException("The Router bean does not exist!");
 		}
-		return new RequestMappingInfo(object, method, router, annotation.name(), new PatternsRequestCondition(patterns, getPathMatcher()), new RequestMethodsRequestCondition(annotation.method()),
-				new ParamsRequestCondition(annotation.params()), new HeadersRequestCondition(annotation.headers()), new ConsumesRequestCondition(annotation.consumes(), annotation.headers()),
-				new ProducesRequestCondition(annotation.produces(), annotation.headers()));
+		return new RequestMappingInfo(object, method, new PatternRequestCondition(pattern, getPathMatcher()), new RequestMethodsRequestCondition(annotation.method()), new ConsumesRequestCondition(
+				annotation.consumes()), new ProducesRequestCondition(annotation.produces()));
 	}
 
 }

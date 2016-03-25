@@ -1,5 +1,6 @@
 package roman.vertx.web.condition;
 
+import io.vertx.ext.web.Route;
 import roman.vertx.web.bind.annotation.RequestMapping;
 
 /**
@@ -32,4 +33,5 @@ public interface RequestCondition<T> {
 	 */
 	T combine(T other);
 
+	Route Router(Route route);
 }

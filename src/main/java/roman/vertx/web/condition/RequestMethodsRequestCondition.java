@@ -1,6 +1,7 @@
 package roman.vertx.web.condition;
 
 import io.vertx.core.http.HttpMethod;
+import io.vertx.ext.web.Route;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -66,6 +67,14 @@ public final class RequestMethodsRequestCondition extends AbstractRequestConditi
 		Set<HttpMethod> set = new LinkedHashSet<HttpMethod>(this.methods);
 		set.addAll(other.methods);
 		return new RequestMethodsRequestCondition(set);
+	}
+
+	@Override
+	public Route Router(Route route) {
+		for (HttpMethod method : methods) {
+			route.method(method);
+		}
+		return route;
 	}
 
 }

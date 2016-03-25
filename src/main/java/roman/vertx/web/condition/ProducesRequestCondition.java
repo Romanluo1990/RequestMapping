@@ -1,5 +1,7 @@
 package roman.vertx.web.condition;
 
+import io.vertx.ext.web.Route;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -7,7 +9,6 @@ import java.util.List;
 import java.util.Set;
 
 import roman.vertx.web.bind.annotation.RequestMapping;
-import roman.vertx.web.condition.HeadersRequestCondition.HeaderExpression;
 import roman.vertx.web.http.MediaType;
 
 /**
@@ -24,82 +25,33 @@ import roman.vertx.web.http.MediaType;
  */
 public final class ProducesRequestCondition extends AbstractRequestCondition<ProducesRequestCondition> {
 
-	private final List<ProduceMediaTypeExpression> MEDIA_TYPE_ALL_LIST = Collections.singletonList(new ProduceMediaTypeExpression("*/*"));
-
-	private final List<ProduceMediaTypeExpression> expressions;
+	private final List<MediaType> mediaTypes;
 
 	/**
-	 * Creates a new instance from "produces" expressions. If 0 expressions are
-	 * provided in total, this condition will match to any request.
+	 * Same as {@link #ProducesRequestCondition(String[])} but also
 	 * 
 	 * @param produces
 	 *            expressions with syntax defined by
 	 *            {@link RequestMapping#produces()}
 	 */
 	public ProducesRequestCondition(String... produces) {
-		this(produces, (String[]) null);
+		this.mediaTypes = new ArrayList<MediaType>(parseExpressions(produces));
+		Collections.sort(this.mediaTypes);
 	}
 
-	/**
-	 * Same as {@link #ProducesRequestCondition(String[], String[])} but also
-	 * accepting a {@link ContentNegotiationManager}.
-	 * 
-	 * @param produces
-	 *            expressions with syntax defined by
-	 *            {@link RequestMapping#produces()}
-	 * @param headers
-	 *            expressions with syntax defined by
-	 *            {@link RequestMapping#headers()}
-	 */
-	public ProducesRequestCondition(String[] produces, String[] headers) {
-		this.expressions = new ArrayList<ProduceMediaTypeExpression>(parseExpressions(produces, headers));
-		Collections.sort(this.expressions);
-	}
-
-	private Set<ProduceMediaTypeExpression> parseExpressions(String[] produces, String[] headers) {
-		Set<ProduceMediaTypeExpression> result = new LinkedHashSet<ProduceMediaTypeExpression>();
-		if (headers != null) {
-			for (String header : headers) {
-				HeaderExpression expr = new HeaderExpression(header);
-				if ("Accept".equalsIgnoreCase(expr.name)) {
-					for (MediaType mediaType : MediaType.parseMediaTypes(expr.value)) {
-						result.add(new ProduceMediaTypeExpression(mediaType, expr.isNegated));
-					}
-				}
-			}
-		}
+	private Set<MediaType> parseExpressions(String[] produces) {
+		Set<MediaType> result = new LinkedHashSet<MediaType>();
 		if (produces != null) {
 			for (String produce : produces) {
-				result.add(new ProduceMediaTypeExpression(produce));
-			}
-		}
-		return result;
-	}
-
-	/**
-	 * Return the contained "produces" expressions.
-	 */
-	public Set<MediaTypeExpression> getExpressions() {
-		return new LinkedHashSet<MediaTypeExpression>(this.expressions);
-	}
-
-	/**
-	 * Return the contained producible media types excluding negated
-	 * expressions.
-	 */
-	public Set<MediaType> getProducibleMediaTypes() {
-		Set<MediaType> result = new LinkedHashSet<MediaType>();
-		for (ProduceMediaTypeExpression expression : this.expressions) {
-			if (!expression.isNegated()) {
-				result.add(expression.getMediaType());
+				result.add(MediaType.parseMediaType(produce));
 			}
 		}
 		return result;
 	}
 
 	@Override
-	protected List<ProduceMediaTypeExpression> getContent() {
-		return this.expressions;
+	protected List<MediaType> getContent() {
+		return this.mediaTypes;
 	}
 
 	@Override
@@ -114,23 +66,15 @@ public final class ProducesRequestCondition extends AbstractRequestCondition<Pro
 	 */
 	@Override
 	public ProducesRequestCondition combine(ProducesRequestCondition other) {
-		return (!other.expressions.isEmpty() ? other : this);
+		return (!other.mediaTypes.isEmpty() ? other : this);
 	}
 
-	/**
-	 * Parses and matches a single media type expression to a request's 'Accept'
-	 * header.
-	 */
-	class ProduceMediaTypeExpression extends AbstractMediaTypeExpression {
-
-		ProduceMediaTypeExpression(MediaType mediaType, boolean negated) {
-			super(mediaType, negated);
+	@Override
+	public Route Router(Route route) {
+		for (MediaType mediaType : mediaTypes) {
+			route.produces(mediaType.toString());
 		}
-
-		ProduceMediaTypeExpression(String expression) {
-			super(expression);
-		}
-
+		return route;
 	}
 
 }

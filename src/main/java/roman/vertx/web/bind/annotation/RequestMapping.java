@@ -22,15 +22,9 @@ import java.lang.annotation.Target;
 @Documented
 public @interface RequestMapping {
 
-	String name() default "";
-
-	String[] value() default {};
+	String value() default "";
 
 	HttpMethod[] method() default {};
-
-	String[] params() default {};
-
-	String[] headers() default {};
 
 	String[] consumes() default {};
 

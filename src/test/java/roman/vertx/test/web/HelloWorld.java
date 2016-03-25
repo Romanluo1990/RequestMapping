@@ -9,7 +9,7 @@ import org.springframework.stereotype.Controller;
 import roman.vertx.web.bind.annotation.RequestMapping;
 
 @Controller
-@RequestMapping("test")
+@RequestMapping("/test")
 public class HelloWorld {
 
 	@RequestMapping(value = "hello/:value", method = HttpMethod.GET)

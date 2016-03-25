@@ -16,27 +16,20 @@
 
 package roman.vertx.web.method;
 
-import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Route;
-import io.vertx.ext.web.Router;
 
 import java.lang.reflect.Method;
 
-import org.springframework.util.StringUtils;
-
 import roman.vertx.web.condition.ConsumesRequestCondition;
-import roman.vertx.web.condition.HeadersRequestCondition;
-import roman.vertx.web.condition.ParamsRequestCondition;
-import roman.vertx.web.condition.PatternsRequestCondition;
+import roman.vertx.web.condition.PatternRequestCondition;
 import roman.vertx.web.condition.ProducesRequestCondition;
 import roman.vertx.web.condition.RequestCondition;
 import roman.vertx.web.condition.RequestMethodsRequestCondition;
-import roman.vertx.web.handler.Handler;
 
 /**
  * Encapsulates the following request mapping conditions:
  * <ol>
- * <li>{@link PatternsRequestCondition}
+ * <li>{@link PatternRequestCondition}
  * <li>{@link RequestMethodsRequestCondition}
  * <li>{@link ParamsRequestCondition}
  * <li>{@link HeadersRequestCondition}
@@ -48,95 +41,28 @@ import roman.vertx.web.handler.Handler;
  * @email 530827804@qq.com
  * @date 2016年3月17日 下午1:57:37
  */
-public final class RequestMappingInfo implements RequestCondition<RequestMappingInfo>, Handler {
+public final class RequestMappingInfo implements RequestCondition<RequestMappingInfo> {
 
 	private final Object object;
 
 	private final Method method;
 
-	private Router router;
-
-	private final String name;
-
-	private final PatternsRequestCondition patternsCondition;
+	private final PatternRequestCondition patternsCondition;
 
 	private final RequestMethodsRequestCondition methodsCondition;
-
-	private final ParamsRequestCondition paramsCondition;
-
-	private final HeadersRequestCondition headersCondition;
 
 	private final ConsumesRequestCondition consumesCondition;
 
 	private final ProducesRequestCondition producesCondition;
 
-	public RequestMappingInfo(Object object, Method method, Router router, String name, PatternsRequestCondition patterns, RequestMethodsRequestCondition methods, ParamsRequestCondition params,
-			HeadersRequestCondition headers, ConsumesRequestCondition consumes, ProducesRequestCondition produces) {
+	public RequestMappingInfo(Object object, Method method, PatternRequestCondition patterns, RequestMethodsRequestCondition methods, ConsumesRequestCondition consumes,
+			ProducesRequestCondition produces) {
 		this.object = object;
 		this.method = method;
-		this.router = router;
-		this.name = (StringUtils.hasText(name) ? name : null);
-		this.patternsCondition = (patterns != null ? patterns : new PatternsRequestCondition());
+		this.patternsCondition = (patterns != null ? patterns : new PatternRequestCondition());
 		this.methodsCondition = (methods != null ? methods : new RequestMethodsRequestCondition());
-		this.paramsCondition = (params != null ? params : new ParamsRequestCondition());
-		this.headersCondition = (headers != null ? headers : new HeadersRequestCondition());
 		this.consumesCondition = (consumes != null ? consumes : new ConsumesRequestCondition());
 		this.producesCondition = (produces != null ? produces : new ProducesRequestCondition());
-	}
-
-	/**
-	 * Return the name for this mapping, or {@code null}.
-	 */
-	public String getName() {
-		return this.name;
-	}
-
-	/**
-	 * Returns the URL patterns of this {@link RequestMappingInfo}; or instance
-	 * with 0 patterns, never {@code null}.
-	 */
-	public PatternsRequestCondition getPatternsCondition() {
-		return this.patternsCondition;
-	}
-
-	/**
-	 * Returns the HTTP request methods of this {@link RequestMappingInfo}; or
-	 * instance with 0 request methods, never {@code null}.
-	 */
-	public RequestMethodsRequestCondition getMethodsCondition() {
-		return this.methodsCondition;
-	}
-
-	/**
-	 * Returns the "parameters" condition of this {@link RequestMappingInfo}; or
-	 * instance with 0 parameter expressions, never {@code null}.
-	 */
-	public ParamsRequestCondition getParamsCondition() {
-		return this.paramsCondition;
-	}
-
-	/**
-	 * Returns the "headers" condition of this {@link RequestMappingInfo}; or
-	 * instance with 0 header expressions, never {@code null}.
-	 */
-	public HeadersRequestCondition getHeadersCondition() {
-		return this.headersCondition;
-	}
-
-	/**
-	 * Returns the "consumes" condition of this {@link RequestMappingInfo}; or
-	 * instance with 0 consumes expressions, never {@code null}.
-	 */
-	public ConsumesRequestCondition getConsumesCondition() {
-		return this.consumesCondition;
-	}
-
-	/**
-	 * Returns the "produces" condition of this {@link RequestMappingInfo}; or
-	 * instance with 0 produces expressions, never {@code null}.
-	 */
-	public ProducesRequestCondition getProducesCondition() {
-		return this.producesCondition;
 	}
 
 	/**
@@ -149,26 +75,12 @@ public final class RequestMappingInfo implements RequestCondition<RequestMapping
 	 */
 	@Override
 	public RequestMappingInfo combine(RequestMappingInfo other) {
-		String name = combineNames(other);
-		PatternsRequestCondition patterns = this.patternsCondition.combine(other.patternsCondition);
+		PatternRequestCondition patterns = this.patternsCondition.combine(other.patternsCondition);
 		RequestMethodsRequestCondition methods = this.methodsCondition.combine(other.methodsCondition);
-		ParamsRequestCondition params = this.paramsCondition.combine(other.paramsCondition);
-		HeadersRequestCondition headers = this.headersCondition.combine(other.headersCondition);
 		ConsumesRequestCondition consumes = this.consumesCondition.combine(other.consumesCondition);
 		ProducesRequestCondition produces = this.producesCondition.combine(other.producesCondition);
 
-		return new RequestMappingInfo(object, method, router, name, patterns, methods, params, headers, consumes, produces);
-	}
-
-	private String combineNames(RequestMappingInfo other) {
-		if (this.name != null && other.name != null) {
-			String separator = "#";
-			return this.name + separator + other.name;
-		} else if (this.name != null) {
-			return this.name;
-		} else {
-			return (other.name != null ? other.name : null);
-		}
+		return new RequestMappingInfo(object, method, patterns, methods, consumes, produces);
 	}
 
 	@Override
@@ -178,8 +90,8 @@ public final class RequestMappingInfo implements RequestCondition<RequestMapping
 		}
 		if (obj != null && obj instanceof RequestMappingInfo) {
 			RequestMappingInfo other = (RequestMappingInfo) obj;
-			return (this.patternsCondition.equals(other.patternsCondition) && this.methodsCondition.equals(other.methodsCondition) && this.paramsCondition.equals(other.paramsCondition)
-					&& this.headersCondition.equals(other.headersCondition) && this.consumesCondition.equals(other.consumesCondition) && this.producesCondition.equals(other.producesCondition));
+			return (this.patternsCondition.equals(other.patternsCondition) && this.methodsCondition.equals(other.methodsCondition) && this.consumesCondition.equals(other.consumesCondition) && this.producesCondition
+					.equals(other.producesCondition));
 		}
 		return false;
 	}
@@ -187,7 +99,7 @@ public final class RequestMappingInfo implements RequestCondition<RequestMapping
 	@Override
 	public int hashCode() {
 		return (this.object.hashCode() + method.hashCode() + this.patternsCondition.hashCode() * 31 + // primary
-				this.methodsCondition.hashCode() + this.paramsCondition.hashCode() + this.headersCondition.hashCode() + this.consumesCondition.hashCode() + this.producesCondition.hashCode());
+				this.methodsCondition.hashCode() + this.consumesCondition.hashCode() + this.producesCondition.hashCode());
 	}
 
 	@Override
@@ -195,8 +107,6 @@ public final class RequestMappingInfo implements RequestCondition<RequestMapping
 		StringBuilder builder = new StringBuilder("{");
 		builder.append(this.patternsCondition);
 		builder.append(",methods=").append(this.methodsCondition);
-		builder.append(",params=").append(this.paramsCondition);
-		builder.append(",headers=").append(this.headersCondition);
 		builder.append(",consumes=").append(this.consumesCondition);
 		builder.append(",produces=").append(this.producesCondition);
 		builder.append('}');
@@ -204,18 +114,16 @@ public final class RequestMappingInfo implements RequestCondition<RequestMapping
 	}
 
 	@Override
-	public void handle() {
-		for (Route route : patternsCondition.router(router)) {
-			for (HttpMethod httpMethod : methodsCondition.getMethods()) {
-				route.method(httpMethod).handler(r -> {
-					try {
-						method.invoke(object, r.request(), r.response());
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				});
+	public Route Router(Route route) {
+		route = consumesCondition.Router(consumesCondition.Router(methodsCondition.Router(patternsCondition.Router(route))));
+		route.handler(r -> {
+			try {
+				method.invoke(object, r.request(), r.response());
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-		}
+		});
+		return route;
 	}
 
 }
