@@ -4,6 +4,9 @@ import io.vertx.ext.web.Router;
 
 import java.lang.reflect.Method;
 
+import javax.annotation.PostConstruct;
+
+import org.springframework.context.annotation.Bean;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.stereotype.Controller;
 

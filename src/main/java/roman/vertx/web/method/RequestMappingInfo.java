@@ -19,12 +19,19 @@ package roman.vertx.web.method;
 import io.vertx.ext.web.Route;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.factory.InitializingBean;
 
 import roman.vertx.web.condition.ConsumesRequestCondition;
 import roman.vertx.web.condition.PatternRequestCondition;
 import roman.vertx.web.condition.ProducesRequestCondition;
 import roman.vertx.web.condition.RequestCondition;
 import roman.vertx.web.condition.RequestMethodsRequestCondition;
+import roman.vertx.web.method.support.HandlerMethodArgumentResolver;
+import roman.vertx.web.method.support.HandlerMethodArgumentResolverComposite;
+import roman.vertx.web.method.support.InvocableHandlerMethod;
 
 /**
  * Encapsulates the following request mapping conditions:
@@ -41,7 +48,7 @@ import roman.vertx.web.condition.RequestMethodsRequestCondition;
  * @email 530827804@qq.com
  * @date 2016年3月17日 下午1:57:37
  */
-public final class RequestMappingInfo implements RequestCondition<RequestMappingInfo> {
+public final class RequestMappingInfo implements RequestCondition<RequestMappingInfo> ,InitializingBean{
 
 	private final Object object;
 
@@ -54,6 +61,8 @@ public final class RequestMappingInfo implements RequestCondition<RequestMapping
 	private final ConsumesRequestCondition consumesCondition;
 
 	private final ProducesRequestCondition producesCondition;
+	
+	private HandlerMethodArgumentResolverComposite argumentResolvers;
 
 	public RequestMappingInfo(Object object, Method method, PatternRequestCondition patterns, RequestMethodsRequestCondition methods, ConsumesRequestCondition consumes,
 			ProducesRequestCondition produces) {
@@ -118,7 +127,9 @@ public final class RequestMappingInfo implements RequestCondition<RequestMapping
 		route = consumesCondition.Router(consumesCondition.Router(methodsCondition.Router(patternsCondition.Router(route))));
 		route.handler(r -> {
 			try {
-				method.invoke(object, r.request(), r.response());
+				InvocableHandlerMethod binderMethod = new InvocableHandlerMethod(object, method);
+				binderMethod.setHandlerMethodArgumentResolvers(argumentResolvers);
+				binderMethod.invokeForRequest(r.request());
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -126,4 +137,53 @@ public final class RequestMappingInfo implements RequestCondition<RequestMapping
 		return route;
 	}
 
+	
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		if (this.argumentResolvers == null) {
+			List<HandlerMethodArgumentResolver> resolvers = getDefaultArgumentResolvers();
+			this.argumentResolvers = new HandlerMethodArgumentResolverComposite().addResolvers(resolvers);
+		}
+	}
+
+	private List<HandlerMethodArgumentResolver> getDefaultArgumentResolvers() {
+		List<HandlerMethodArgumentResolver> resolvers = new ArrayList<HandlerMethodArgumentResolver>();
+
+		// Annotation-based argument resolution
+		resolvers.add(new RequestParamMethodArgumentResolver(getBeanFactory(), false));
+		resolvers.add(new RequestParamMapMethodArgumentResolver());
+		resolvers.add(new PathVariableMethodArgumentResolver());
+		resolvers.add(new PathVariableMapMethodArgumentResolver());
+		resolvers.add(new MatrixVariableMethodArgumentResolver());
+		resolvers.add(new MatrixVariableMapMethodArgumentResolver());
+		resolvers.add(new ServletModelAttributeMethodProcessor(false));
+		resolvers.add(new RequestResponseBodyMethodProcessor(getMessageConverters()));
+		resolvers.add(new RequestPartMethodArgumentResolver(getMessageConverters()));
+		resolvers.add(new RequestHeaderMethodArgumentResolver(getBeanFactory()));
+		resolvers.add(new RequestHeaderMapMethodArgumentResolver());
+		resolvers.add(new ServletCookieValueMethodArgumentResolver(getBeanFactory()));
+		resolvers.add(new ExpressionValueMethodArgumentResolver(getBeanFactory()));
+
+		// Type-based argument resolution
+		resolvers.add(new ServletRequestMethodArgumentResolver());
+		resolvers.add(new ServletResponseMethodArgumentResolver());
+		resolvers.add(new HttpEntityMethodProcessor(getMessageConverters()));
+		resolvers.add(new RedirectAttributesMethodArgumentResolver());
+		resolvers.add(new ModelMethodProcessor());
+		resolvers.add(new MapMethodProcessor());
+		resolvers.add(new ErrorsMethodArgumentResolver());
+		resolvers.add(new SessionStatusMethodArgumentResolver());
+		resolvers.add(new UriComponentsBuilderMethodArgumentResolver());
+
+		// Custom arguments
+		if (getCustomArgumentResolvers() != null) {
+			resolvers.addAll(getCustomArgumentResolvers());
+		}
+
+		// Catch-all
+		resolvers.add(new RequestParamMethodArgumentResolver(getBeanFactory(), true));
+		resolvers.add(new ServletModelAttributeMethodProcessor(true));
+
+		return resolvers;
+	}
 }
